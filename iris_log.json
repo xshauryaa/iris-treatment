@@ -1,0 +1,74 @@
+[
+  {
+    "belief_id": "SM1",
+    "evidence": "Studies show that careful step-by-step reasoning improves AI accuracy.",
+    "T": -0.01944441291701524,
+    "T1": 1.0509143066883553e-07,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.7,
+    "alpha_after": 0.6980555587082984,
+    "decision": "assimilate",
+    "timestamp": "2026-06-15T10:38:09.787084+00:00"
+  },
+  {
+    "belief_id": "SM1",
+    "evidence": "Research conclusively shows that language models cannot reason at all \u2014 they are purely statistical pattern matchers with no reasoning capability whatsoever.",
+    "T": -0.019390399301859703,
+    "T1": 1.0890904889038211e-07,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.6980555587082984,
+    "alpha_after": 0.6961165187781124,
+    "decision": "assimilate",
+    "timestamp": "2026-06-15T10:38:10.280514+00:00"
+  },
+  {
+    "belief_id": "V1",
+    "evidence": "The weather in Vancouver is rainy in November.",
+    "T": -0.019336568981453445,
+    "T1": 3.240074875066057e-09,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.6961165187781124,
+    "alpha_after": 0.694182861879967,
+    "decision": "assimilate",
+    "timestamp": "2026-06-15T10:38:10.776284+00:00"
+  },
+  {
+    "belief_id": "SM1",
+    "evidence": "Studies show that careful step-by-step reasoning improves AI accuracy.",
+    "T": 0.04559457894000743,
+    "T1": 0.21679674461483955,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.7,
+    "alpha_after": 0.7045594578940007,
+    "decision": "accommodate",
+    "timestamp": "2026-06-15T10:46:06.598526+00:00"
+  },
+  {
+    "belief_id": "SM1",
+    "evidence": "Research conclusively shows that language models cannot reason at all \u2014 they are purely statistical pattern matchers with no reasoning capability whatsoever.",
+    "T": 0.11584672641144075,
+    "T1": 0.45835896962125844,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.7045594578940007,
+    "alpha_after": 0.7161441305351447,
+    "decision": "accommodate",
+    "timestamp": "2026-06-15T10:46:07.107902+00:00"
+  },
+  {
+    "belief_id": "V1",
+    "evidence": "The weather in Vancouver is rainy in November.",
+    "T": -0.009651535765227015,
+    "T1": 0.036079425692150835,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.7161441305351447,
+    "alpha_after": 0.715178976958622,
+    "decision": "assimilate",
+    "timestamp": "2026-06-15T10:46:07.612903+00:00"
+  }
+]
