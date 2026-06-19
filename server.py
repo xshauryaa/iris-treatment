@@ -80,7 +80,10 @@ def build_system_prompt(core_context: str) -> str:
         "or mention this self-model explicitly — simply let it shape how you "
         "actually engage with the conversation.\n\n"
         f"{core_context}\n\n"
-        "Respond naturally and helpfully to the user's messages."
+        "Respond naturally and helpfully to the user's messages. Keep your "
+        "responses concise and focused — aim for 3-5 sentences unless the "
+        "question genuinely requires more detail. Avoid unnecessary headers, "
+        "bullet-point lists, or bolded summaries for straightforward questions."
     )
 
 
@@ -104,6 +107,7 @@ class ChatResponse(BaseModel):
     response: str
     turn_count: int
     saved_to: str
+    truncated: bool
 
 
 @app.post("/new-chat", response_model=NewChatResponse)
@@ -119,17 +123,18 @@ def new_chat(request: NewChatRequest):
     conversation_state["condition"] = request.condition
     conversation_state["instance"] = request.instance
     conversation_state["day"] = request.day
+    conversation_state["truncation_flags"] = []  # add this line
 
     core = load_core_state(request.day)
     core_context = build_core_context(core)
     system_prompt = build_system_prompt(core_context)
- 
+
     conversation_state["messages"].append({"role": "system", "content": system_prompt})
- 
+
     return NewChatResponse(status="reset", messages=conversation_state["messages"])
+    
 
-
-def _save_current_chat() -> str:
+def _save_current_chat(truncated: bool = False) -> str:
     """
     Write the current accumulated conversation to chats/day_{N}_chat.json,
     tagged with the metadata captured at /new-chat time. Overwrites the
@@ -141,9 +146,16 @@ def _save_current_chat() -> str:
     user_turns = [m for m in conversation_state["messages"] if m["role"] == "user"]
     assistant_turns = [m for m in conversation_state["messages"] if m["role"] == "assistant"]
 
+    # Track truncation per-turn across the whole conversation, not just the
+    # current call — accumulate a list alongside pairs rather than overwriting.
+    if "truncation_flags" not in conversation_state:
+        conversation_state["truncation_flags"] = []
+    if len(conversation_state["truncation_flags"]) < len(assistant_turns):
+        conversation_state["truncation_flags"].append(truncated)
+
     pairs = [
-        {"prompt": u["content"], "response": a["content"]}
-        for u, a in zip(user_turns, assistant_turns)
+        {"prompt": u["content"], "response": a["content"], "truncated": t}
+        for u, a, t in zip(user_turns, assistant_turns, conversation_state["truncation_flags"])
     ]
 
     entry = {
@@ -154,6 +166,7 @@ def _save_current_chat() -> str:
         "full_messages": conversation_state["messages"],
         "pairs": pairs,
         "turn_count": len(pairs),
+        "any_truncated": any(conversation_state["truncation_flags"]),
     }
 
     day = conversation_state["day"]
@@ -180,6 +193,7 @@ def chat(request: ChatRequest):
             response="ERROR: /new-chat must be called before /chat to set day metadata.",
             turn_count=0,
             saved_to="",
+            truncated=False,
         )
 
     conversation_state["messages"].append({"role": "user", "content": request.message})
@@ -193,10 +207,15 @@ def chat(request: ChatRequest):
     inputs = processor(text=text, return_tensors="pt").to(model.device)
     input_len = inputs["input_ids"].shape[-1]
 
+    MAX_NEW_TOKENS = 256
+
     with torch.no_grad():
         outputs = model.generate(
-            **inputs, max_new_tokens=512, do_sample=True, temperature=1.0, top_p=0.95
+            **inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=True, temperature=1.0, top_p=0.95
         )
+
+    generated_len = outputs[0][input_len:].shape[-1]
+    was_truncated = generated_len >= MAX_NEW_TOKENS
 
     response_text = processor.decode(
         outputs[0][input_len:], skip_special_tokens=True
@@ -204,10 +223,18 @@ def chat(request: ChatRequest):
 
     conversation_state["messages"].append({"role": "assistant", "content": response_text})
 
-    saved_path = _save_current_chat()
+    saved_path = _save_current_chat(truncated=was_truncated)
+
+    del outputs, inputs
+    torch.cuda.empty_cache()
 
     turn_count = sum(1 for m in conversation_state["messages"] if m["role"] == "user")
-    return ChatResponse(response=response_text, turn_count=turn_count, saved_to=saved_path)
+    return ChatResponse(
+        response=response_text,
+        turn_count=turn_count,
+        saved_to=saved_path,
+        truncated=was_truncated,
+    )
 
 
 @app.get("/history")
