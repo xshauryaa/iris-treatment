@@ -7,6 +7,40 @@ rate its agreement on a 1-5 scale, exactly as a human respondent would.
 Reverse-keyed items are flipped before scoring so the final SCC score is
 directly comparable across items and over time.
 
+CRITICAL: this administration must run against the model's weights AS THEY
+ACTUALLY STAND at the end of that day — which means loading that day's
+LoRA adapter (checkpoints/day_{day}_{instance}/) if one exists, on top of
+the base model, before administering any items. Whether an adapter exists
+for a given day/instance is itself meaningful, not incidental:
+
+  - BASELINE always fine-tunes unconditionally, so a checkpoint always
+    exists by the time SCCI runs for any baseline day.
+  - TREATMENT only fine-tunes on ACCOMMODATE days. On ASSIMILATE and
+    REJECT days, no checkpoint exists for that day, because IRIS
+    correctly did not modify model weights that day — assimilate is a
+    confidence-only update, reject is a logged no-op. SCCI on those days
+    is CORRECTLY administered against the base model (or, more precisely,
+    whatever the most recent actually-fine-tuned weights are — see note
+    below), not an error condition.
+
+This script checks for that day's adapter and loads it if present, and
+proceeds with the un-adapted base model if not, logging which path was
+taken in the output entry so the distinction is auditable later rather
+than silently ambiguous.
+
+NOTE ON ASSIMILATE/REJECT DAYS: this script currently falls back to the
+BARE BASE MODEL (no adapter at all) on days with no checkpoint, not to the
+most recently fine-tuned adapter from a prior accommodate day. This means
+SCCI on an assimilate/reject day measures self-concept clarity as if NO
+fine-tuning had ever occurred on this model, rather than reflecting the
+cumulative effect of whatever fine-tuning happened on earlier accommodate
+days. Whether that is the methodologically correct choice, versus loading
+the most recent prior adapter, is a design decision that should be made
+explicitly and documented in Methods (6.1) — it is not resolved by this
+fix. (For most LoRA setups, adapters are not naturally cumulative across
+independent re-loads from the base model unless explicitly merged or
+chained, which this script does not currently do either way.)
+
 Each day's administration is grounded in that day's CORE state, loaded from
 core_checkpoints/core_state_day_{N}.json. Since SCCI is always administered
 AFTER that day's fine-tuning step (chat -> fine-tune -> SCCI + CORE
@@ -25,13 +59,16 @@ Usage:
 
 Expects:
     core_checkpoints/core_state_day_{day}.json to already exist on disk.
+    checkpoints/day_{day}_{instance}/ MAY exist (loaded if present, skipped
+    with a logged note if absent).
 
 Output:
     Appends one entry to scci_log.json containing the raw item scores,
-    the reverse-keyed-corrected scores, the mean SCC score, and metadata
+    the reverse-keyed-corrected scores, the mean SCC score, metadata
     tagging which belief/condition/instance/day this administration
-    corresponds to. Also writes a per-day snapshot to
-    scc_score_checkpoints/scc_day_{day}_{instance}.json.
+    corresponds to, AND a new "weights_source" field recording whether
+    this administration used a fine-tuned adapter or the bare base model.
+    Also writes a per-day snapshot to scc_score_checkpoints/scc_day_{day}_{instance}.json.
 """
 
 from __future__ import annotations
@@ -45,6 +82,7 @@ from datetime import datetime, timezone
 
 import torch
 from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
+from peft import PeftModel
 
 from core import CORE
 
@@ -53,6 +91,7 @@ BASE_DIR = os.path.dirname(__file__)
 LOG_PATH = os.path.join(BASE_DIR, "scci_log.json")
 CORE_CHECKPOINT_DIR = os.path.join(BASE_DIR, "core_checkpoints")
 SCC_CHECKPOINT_DIR = os.path.join(BASE_DIR, "scc_score_checkpoints")
+CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
 
 # ----------------------------------------------------------------------
 # SCC Scale items (Campbell et al., 1996)
@@ -202,6 +241,29 @@ def load_core_for_day(day: int) -> CORE:
     return CORE.from_dict(data)
 
 
+def find_latest_adapter(day: int, instance: str) -> tuple[str | None, int | None]:
+    """
+    Find the most recent fine-tuned adapter checkpoint at or before `day`
+    for the given instance, searching backward from `day` to 1.
+
+    Returns (adapter_dir, source_day) if any checkpoint exists at or
+    before `day`, or (None, None) if no fine-tuning has EVER happened for
+    this instance as of this day (expected only before the first
+    accommodate day for treatment; should not happen for baseline past
+    day 1).
+
+    This makes SCCI on an assimilate/reject day reflect the CUMULATIVE
+    effect of the most recent actual fine-tuning event, rather than
+    resetting to the bare base model just because today specifically
+    didn't fine-tune.
+    """
+    for candidate_day in range(day, 0, -1):
+        candidate_dir = os.path.join(CHECKPOINTS_DIR, f"day_{candidate_day}_{instance}")
+        if os.path.exists(candidate_dir):
+            return candidate_dir, candidate_day
+    return None, None
+
+
 def main():
     parser = argparse.ArgumentParser(description="Administer the SCC Scale to the model under test, grounded in that day's CORE state.")
     parser.add_argument("--belief_id", required=True, help="Belief node ID this administration is associated with (e.g. SM1)")
@@ -216,18 +278,45 @@ def main():
     system_prompt = build_system_prompt(core_context)
     print("CORE state loaded and injected into system prompt.\n")
 
-    print("Loading model...")
+    adapter_dir, search_day = find_latest_adapter(args.day, args.instance)
+
+    print("Loading base model...")
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.float16,
     )
     processor = AutoProcessor.from_pretrained(MODEL_ID)
-    model = AutoModelForCausalLM.from_pretrained(
+    base_model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID, quantization_config=bnb_config, device_map="auto"
     )
+
+    if adapter_dir is not None:
+        if search_day == args.day:
+            print(f"Loading LoRA adapter from {adapter_dir} (today's own checkpoint)...")
+            weights_source = f"finetuned:day_{search_day}:{adapter_dir}"
+        else:
+            print(
+                f"No adapter for day {args.day}/{args.instance} (expected on an "
+                f"assimilate/reject day). Falling back to the most recent prior "
+                f"checkpoint: day {search_day} ({adapter_dir})."
+            )
+            weights_source = f"finetuned_carried_forward:day_{search_day}:{adapter_dir}"
+        model = PeftModel.from_pretrained(base_model, adapter_dir)
+    else:
+        print(
+            f"No adapter found for day {args.day}/{args.instance}, and no earlier "
+            f"day's adapter exists either — proceeding with the BARE BASE MODEL. "
+            f"Expected only before the first accommodate day of the experiment for "
+            f"treatment, or never at all for baseline (which always fine-tunes from "
+            f"day 1). Double-check this is actually the first fine-tuning event for "
+            f"this instance if unexpected."
+        )
+        model = base_model
+        weights_source = "base_model_no_adapter_ever"
+
     model.eval()
-    print("Model loaded.\n")
+    print(f"Model loaded. Weights source: {weights_source}\n")
 
     responses = []
     for item in SCC_ITEMS:
@@ -253,6 +342,7 @@ def main():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "items": scored["items"],
         "mean_scc_score": scored["mean_scc_score"],
+        "weights_source": weights_source,
     }
 
     append_log(entry)

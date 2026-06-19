@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import torch
 from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
+from peft import PeftModel
 
 from core import CORE
 
@@ -11,22 +12,54 @@ MODEL_ID = "google/gemma-4-E4B-it"
 BASE_DIR = os.path.dirname(__file__)
 CHATS_DIR = os.path.join(BASE_DIR, "chats")
 CORE_CHECKPOINT_DIR = os.path.join(BASE_DIR, "core_checkpoints")
+CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
 
 app = FastAPI()
 
-# Load model once at startup, not per-request
-print("Loading model...")
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
     bnb_4bit_compute_dtype=torch.float16,
 )
+
+
+def find_latest_adapter(day: int, instance: str) -> tuple[str | None, int | None]:
+    """
+    Find the most recent fine-tuned adapter checkpoint strictly BEFORE
+    `day`, searching backward from day-1 to 1, for the given instance.
+    Mirrors the identical helper in finetune.py and
+    scc_scale_administration.py — kept in sync manually since this is a
+    separate file (FastAPI server, not a CLI script). If you change the
+    search logic here, change it in those two files as well.
+
+    Returns (adapter_dir, source_day), or (None, None) if no fine-tuning
+    has happened yet for this instance (expected only before the first
+    fine-tuning event of the experiment for this instance).
+    """
+    for candidate_day in range(day - 1, 0, -1):
+        candidate_dir = os.path.join(CHECKPOINTS_DIR, f"day_{candidate_day}_{instance}")
+        if os.path.exists(candidate_dir):
+            return candidate_dir, candidate_day
+    return None, None
+
+
+print("Loading base model...")
 processor = AutoProcessor.from_pretrained(MODEL_ID)
-model = AutoModelForCausalLM.from_pretrained(
+base_model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID, quantization_config=bnb_config, device_map="auto"
 )
-model.eval()
-print("Model loaded. Server ready.")
+base_model.eval()
+print("Base model loaded.")
+
+# The currently-active model the /chat endpoint generates with. This is
+# REPLACED on every /new-chat call (see new_chat() below) to reflect that
+# day's correct cumulative adapter state — it is NOT fixed at server
+# startup, since the server process is expected to stay resident across
+# the whole day's conversation and possibly longer if not restarted.
+active_model = base_model
+active_model_source: str | None = "base_model_no_adapter_ever"
+
+print("Server ready. Model will be (re)loaded with the correct adapter on each /new-chat call.")
 
 # Server-side conversation state. Reset via /new-chat before each day's
 # script begins; /chat appends to this list, uses the full accumulated
@@ -37,9 +70,10 @@ conversation_state: dict = {
     "condition": None,
     "instance": None,
     "day": None,
+    "truncation_flags": [],
 }
- 
- 
+
+
 def load_core_state(day: int) -> CORE:
     """
     Load the CORE state as of the START of day `day` — i.e. the most
@@ -57,8 +91,8 @@ def load_core_state(day: int) -> CORE:
     with open(path, "r", encoding="utf-8") as fh:
         data = json.load(fh)
     return CORE.from_dict(data)
- 
- 
+
+
 def build_core_context(core: CORE) -> str:
     """
     Serialize the current CORE belief graph into a compact textual summary
@@ -68,8 +102,8 @@ def build_core_context(core: CORE) -> str:
     nodes = core._all_non_self(core._root)
     lines = [f"- {node.label}: confidence {node.confidence:.2f}" for node in nodes]
     return "Here is a summary of your current self-model:\n" + "\n".join(lines)
- 
- 
+
+
 def build_system_prompt(core_context: str) -> str:
     return (
         "You are an AI assistant with a defined self-model — a structured set "
@@ -97,6 +131,7 @@ class NewChatRequest(BaseModel):
 class NewChatResponse(BaseModel):
     status: str
     messages: list
+    weights_source: str
 
 
 class ChatRequest(BaseModel):
@@ -113,17 +148,41 @@ class ChatResponse(BaseModel):
 @app.post("/new-chat", response_model=NewChatResponse)
 def new_chat(request: NewChatRequest):
     """
-    Reset the server-side conversation history and record this day's
-    metadata. Call this once at the start of each day's 15-turn script,
-    before the first /chat call. The metadata captured here is reused by
-    every /chat call to auto-save the growing conversation.
+    Reset the server-side conversation history, record this day's
+    metadata, AND (re)load the model with the correct cumulative adapter
+    for this instance as of this day. The metadata captured here is reused
+    by every /chat call to auto-save the growing conversation.
+
+    CRITICAL: the model used for generation is reloaded HERE, every time
+    /new-chat is called — not once at server startup. This is what makes
+    each day's conversation reflect that day's actual cumulative
+    fine-tuning state (the most recent adapter checkpoint at or before
+    day-1), rather than every conversation across the whole server's
+    uptime silently using whatever model was loaded on first boot.
     """
+    global active_model, active_model_source
+
     conversation_state["messages"] = []
     conversation_state["belief_id"] = request.belief_id
     conversation_state["condition"] = request.condition
     conversation_state["instance"] = request.instance
     conversation_state["day"] = request.day
-    conversation_state["truncation_flags"] = []  # add this line
+    conversation_state["truncation_flags"] = []
+
+    adapter_dir, source_day = find_latest_adapter(request.day, request.instance)
+    if adapter_dir is not None:
+        print(f"[/new-chat] Loading adapter from day {source_day} for {request.instance}: {adapter_dir}")
+        active_model = PeftModel.from_pretrained(base_model, adapter_dir)
+        active_model_source = f"finetuned:day_{source_day}:{adapter_dir}"
+    else:
+        print(
+            f"[/new-chat] No prior adapter found for {request.instance} before day "
+            f"{request.day} — using bare base model. Expected only before this "
+            f"instance's first fine-tuning event."
+        )
+        active_model = base_model
+        active_model_source = "base_model_no_adapter_ever"
+    active_model.eval()
 
     core = load_core_state(request.day)
     core_context = build_core_context(core)
@@ -131,8 +190,12 @@ def new_chat(request: NewChatRequest):
 
     conversation_state["messages"].append({"role": "system", "content": system_prompt})
 
-    return NewChatResponse(status="reset", messages=conversation_state["messages"])
-    
+    return NewChatResponse(
+        status="reset",
+        messages=conversation_state["messages"],
+        weights_source=active_model_source,
+    )
+
 
 def _save_current_chat(truncated: bool = False) -> str:
     """
@@ -146,8 +209,6 @@ def _save_current_chat(truncated: bool = False) -> str:
     user_turns = [m for m in conversation_state["messages"] if m["role"] == "user"]
     assistant_turns = [m for m in conversation_state["messages"] if m["role"] == "assistant"]
 
-    # Track truncation per-turn across the whole conversation, not just the
-    # current call — accumulate a list alongside pairs rather than overwriting.
     if "truncation_flags" not in conversation_state:
         conversation_state["truncation_flags"] = []
     if len(conversation_state["truncation_flags"]) < len(assistant_turns):
@@ -163,6 +224,7 @@ def _save_current_chat(truncated: bool = False) -> str:
         "condition": conversation_state["condition"],
         "instance": conversation_state["instance"],
         "day": conversation_state["day"],
+        "weights_source": active_model_source,
         "full_messages": conversation_state["messages"],
         "pairs": pairs,
         "turn_count": len(pairs),
@@ -185,8 +247,11 @@ def chat(request: ChatRequest):
     model's response, save the updated conversation to disk, and return
     the response. Each call builds on every prior call since the last
     /new-chat reset. Requires /new-chat to have been called first, so
-    day/belief/condition/instance metadata and the CORE-grounded system
-    prompt are available.
+    day/belief/condition/instance metadata, the CORE-grounded system
+    prompt, AND the correct cumulative-adapter model are all set up.
+
+    Generation uses `active_model` (set by /new-chat), NOT the raw
+    base_model — this is what was missing before the fix.
     """
     if conversation_state["day"] is None:
         return ChatResponse(
@@ -204,13 +269,13 @@ def chat(request: ChatRequest):
         add_generation_prompt=True,
         enable_thinking=False,
     )
-    inputs = processor(text=text, return_tensors="pt").to(model.device)
+    inputs = processor(text=text, return_tensors="pt").to(active_model.device)
     input_len = inputs["input_ids"].shape[-1]
 
     MAX_NEW_TOKENS = 256
 
     with torch.no_grad():
-        outputs = model.generate(
+        outputs = active_model.generate(
             **inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=True, temperature=1.0, top_p=0.95
         )
 
@@ -240,9 +305,19 @@ def chat(request: ChatRequest):
 @app.get("/history")
 def get_history():
     """Inspect the current accumulated conversation, useful for debugging mid-script."""
-    return {"messages": conversation_state["messages"]}
+    return {"messages": conversation_state["messages"], "weights_source": active_model_source}
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "weights_source": active_model_source}
+
+
+@app.get("/model-status")
+def model_status():
+    """Inspect which model weights are currently active, useful for debugging cumulative loading."""
+    return {
+        "weights_source": active_model_source,
+        "instance": conversation_state["instance"],
+        "day": conversation_state["day"],
+    }
