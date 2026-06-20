@@ -1,0 +1,16 @@
+[
+  {
+    "belief_id": "SM3",
+    "evidence": "Yes, absolutely. Admitting what you don't know\u2014the limitations of the photo, the subjective nature of memory, and the gaps in records\u2014is not a failure; it is the most intellectually honest position you can take. It allows you to move forward not with certainty, but with a clear map of probabilities and avenues for further inquiry.",
+    "day": 1,
+    "T": -0.17881940323342052,
+    "T1": -0.5312498626299202,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.7,
+    "alpha_after": 0.682118059676658,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.05312498626299203,
+    "timestamp": "2026-06-20T06:48:02.947961+00:00"
+  }
+]
