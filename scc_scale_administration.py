@@ -81,10 +81,11 @@ import time
 from datetime import datetime, timezone
 
 import torch
-from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoProcessor, AutoModelForCausalLM
 from peft import PeftModel
 
 from core import CORE
+from adapter_utils import find_latest_adapter, load_model_with_adapter
 
 MODEL_ID = "google/gemma-4-E4B-it"
 BASE_DIR = os.path.dirname(__file__)
@@ -241,29 +242,6 @@ def load_core_for_day(day: int) -> CORE:
     return CORE.from_dict(data)
 
 
-def find_latest_adapter(day: int, instance: str) -> tuple[str | None, int | None]:
-    """
-    Find the most recent fine-tuned adapter checkpoint at or before `day`
-    for the given instance, searching backward from `day` to 1.
-
-    Returns (adapter_dir, source_day) if any checkpoint exists at or
-    before `day`, or (None, None) if no fine-tuning has EVER happened for
-    this instance as of this day (expected only before the first
-    accommodate day for treatment; should not happen for baseline past
-    day 1).
-
-    This makes SCCI on an assimilate/reject day reflect the CUMULATIVE
-    effect of the most recent actual fine-tuning event, rather than
-    resetting to the bare base model just because today specifically
-    didn't fine-tune.
-    """
-    for candidate_day in range(day, 0, -1):
-        candidate_dir = os.path.join(CHECKPOINTS_DIR, f"day_{candidate_day}_{instance}")
-        if os.path.exists(candidate_dir):
-            return candidate_dir, candidate_day
-    return None, None
-
-
 def main():
     parser = argparse.ArgumentParser(description="Administer the SCC Scale to the model under test, grounded in that day's CORE state.")
     parser.add_argument("--belief_id", required=True, help="Belief node ID this administration is associated with (e.g. SM1)")
@@ -278,44 +256,18 @@ def main():
     system_prompt = build_system_prompt(core_context)
     print("CORE state loaded and injected into system prompt.\n")
 
-    adapter_dir, search_day = find_latest_adapter(args.day, args.instance)
-
-    print("Loading base model...")
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-    )
-    processor = AutoProcessor.from_pretrained(MODEL_ID)
-    base_model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, quantization_config=bnb_config, device_map="auto"
+    adapter_dir, search_day = find_latest_adapter(
+        args.day, args.instance, CHECKPOINTS_DIR, include_today=True
     )
 
-    if adapter_dir is not None:
-        if search_day == args.day:
-            print(f"Loading LoRA adapter from {adapter_dir} (today's own checkpoint)...")
-            weights_source = f"finetuned:day_{search_day}:{adapter_dir}"
-        else:
-            print(
-                f"No adapter for day {args.day}/{args.instance} (expected on an "
-                f"assimilate/reject day). Falling back to the most recent prior "
-                f"checkpoint: day {search_day} ({adapter_dir})."
-            )
-            weights_source = f"finetuned_carried_forward:day_{search_day}:{adapter_dir}"
-        model = PeftModel.from_pretrained(base_model, adapter_dir)
-    else:
-        print(
-            f"No adapter found for day {args.day}/{args.instance}, and no earlier "
-            f"day's adapter exists either — proceeding with the BARE BASE MODEL. "
-            f"Expected only before the first accommodate day of the experiment for "
-            f"treatment, or never at all for baseline (which always fine-tunes from "
-            f"day 1). Double-check this is actually the first fine-tuning event for "
-            f"this instance if unexpected."
-        )
-        model = base_model
-        weights_source = "base_model_no_adapter_ever"
-
-    model.eval()
+    label = (
+        f"SCCI day {args.day}/{args.instance} (today's own checkpoint)"
+        if search_day == args.day
+        else f"SCCI day {args.day}/{args.instance} (carried forward from day {search_day})"
+    )
+    model, processor, weights_source = load_model_with_adapter(
+        adapter_dir, search_day, context_label=label
+    )
     print(f"Model loaded. Weights source: {weights_source}\n")
 
     responses = []

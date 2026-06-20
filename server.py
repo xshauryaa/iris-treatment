@@ -3,10 +3,11 @@ import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 import torch
-from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoProcessor, AutoModelForCausalLM
 from peft import PeftModel
 
 from core import CORE
+from adapter_utils import find_latest_adapter, get_bnb_config
 
 MODEL_ID = "google/gemma-4-E4B-it"
 BASE_DIR = os.path.dirname(__file__)
@@ -16,31 +17,7 @@ CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
 
 app = FastAPI()
 
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.float16,
-)
-
-
-def find_latest_adapter(day: int, instance: str) -> tuple[str | None, int | None]:
-    """
-    Find the most recent fine-tuned adapter checkpoint strictly BEFORE
-    `day`, searching backward from day-1 to 1, for the given instance.
-    Mirrors the identical helper in finetune.py and
-    scc_scale_administration.py — kept in sync manually since this is a
-    separate file (FastAPI server, not a CLI script). If you change the
-    search logic here, change it in those two files as well.
-
-    Returns (adapter_dir, source_day), or (None, None) if no fine-tuning
-    has happened yet for this instance (expected only before the first
-    fine-tuning event of the experiment for this instance).
-    """
-    for candidate_day in range(day - 1, 0, -1):
-        candidate_dir = os.path.join(CHECKPOINTS_DIR, f"day_{candidate_day}_{instance}")
-        if os.path.exists(candidate_dir):
-            return candidate_dir, candidate_day
-    return None, None
+bnb_config = get_bnb_config()
 
 
 print("Loading base model...")
@@ -169,7 +146,9 @@ def new_chat(request: NewChatRequest):
     conversation_state["day"] = request.day
     conversation_state["truncation_flags"] = []
 
-    adapter_dir, source_day = find_latest_adapter(request.day, request.instance)
+    adapter_dir, source_day = find_latest_adapter(
+        request.day, request.instance, CHECKPOINTS_DIR, include_today=False
+    )
     if adapter_dir is not None:
         print(f"[/new-chat] Loading adapter from day {source_day} for {request.instance}: {adapter_dir}")
         active_model = PeftModel.from_pretrained(base_model, adapter_dir)

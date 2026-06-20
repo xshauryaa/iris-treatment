@@ -66,9 +66,10 @@ import json
 import os
 
 import torch
-from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoProcessor, AutoModelForCausalLM
 from peft import get_peft_model, PeftModel
 from qlora_config import qlora_config
+from adapter_utils import find_latest_adapter, get_bnb_config
 
 MODEL_ID = "google/gemma-4-E4B-it"
 BASE_DIR = os.path.dirname(__file__)
@@ -79,30 +80,6 @@ CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
 # Set empirically — see module docstring. Adjust only after re-measuring
 # safe context length on the actual hardware; do not change casually.
 CONTEXT_WINDOW_TURNS = 6
-
-
-def find_latest_adapter(day: int, instance: str) -> tuple[str | None, int | None]:
-    """
-    Find the most recent fine-tuned adapter checkpoint strictly BEFORE
-    `day`, searching backward from day-1 to 1, for the given instance.
-
-    Returns (adapter_dir, source_day), or (None, None) if no prior
-    fine-tuning has ever happened for this instance — expected only on
-    the very first fine-tuning event of the experiment (e.g. day 1 for
-    baseline, or whichever day treatment's first accommodate decision
-    lands on).
-
-    This is what makes fine-tuning CUMULATIVE: today's training continues
-    from the most recent actual fine-tuned state, not from the untouched
-    base model every time. Note this deliberately searches day-1 backward,
-    not including `day` itself — today's checkpoint shouldn't exist yet
-    when this is called, since we're about to create it.
-    """
-    for candidate_day in range(day - 1, 0, -1):
-        candidate_dir = os.path.join(CHECKPOINTS_DIR, f"day_{candidate_day}_{instance}")
-        if os.path.exists(candidate_dir):
-            return candidate_dir, candidate_day
-    return None, None
 
 
 def load_day_chat(day: int) -> dict:
@@ -211,11 +188,7 @@ def main():
     examples = build_training_examples(chat_data["full_messages"], window_turns=args.window)
     print(f"Built {len(examples)} training examples (sliding window, K={args.window} turns)\n")
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-    )
+    bnb_config = get_bnb_config()
 
     print("Loading base model...")
     processor = AutoProcessor.from_pretrained(MODEL_ID)
@@ -223,7 +196,9 @@ def main():
         MODEL_ID, quantization_config=bnb_config, device_map="auto"
     )
 
-    prior_adapter_dir, prior_day = find_latest_adapter(args.day, args.instance)
+    prior_adapter_dir, prior_day = find_latest_adapter(
+        args.day, args.instance, CHECKPOINTS_DIR, include_today=False
+    )
     if prior_adapter_dir is not None:
         print(f"Continuing from day {prior_day}'s adapter ({prior_adapter_dir}) — cumulative training.")
         model = PeftModel.from_pretrained(base_model, prior_adapter_dir, is_trainable=True)

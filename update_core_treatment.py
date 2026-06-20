@@ -84,11 +84,12 @@ import json
 import os
 
 import torch
-from transformers import AutoProcessor, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoProcessor, AutoModelForCausalLM
 from peft import PeftModel
 
 from core import CORE
 from iris import IRISController
+from adapter_utils import find_latest_adapter, load_model_with_adapter
 
 MODEL_ID = "google/gemma-4-E4B-it"
 BASE_DIR = os.path.dirname(__file__)
@@ -97,59 +98,6 @@ CHATS_DIR = os.path.join(BASE_DIR, "chats")
 CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
 
 _YES_VARIANTS = ("Yes", "yes", "YES")
-
-
-def find_latest_adapter(day: int, instance: str = "treatment") -> tuple[str | None, int | None]:
-    """
-    Find the most recent fine-tuned adapter checkpoint strictly BEFORE
-    `day`, searching backward from day-1 to 1. Mirrors the identical
-    helper in finetune.py, server.py, and scc_scale_administration.py —
-    kept in sync manually since these are separate files. If you change
-    the search logic here, change it in those files as well.
-
-    Returns (adapter_dir, source_day), or (None, None) if no fine-tuning
-    has ever happened for this instance yet (expected before treatment's
-    first accommodate day).
-    """
-    for candidate_day in range(day - 1, 0, -1):
-        candidate_dir = os.path.join(CHECKPOINTS_DIR, f"day_{candidate_day}_{instance}")
-        if os.path.exists(candidate_dir):
-            return candidate_dir, candidate_day
-    return None, None
-
-
-def load_model_for_probe(adapter_dir: str | None, source_day: int | None, context_label: str):
-    """
-    Load the base model and, if an adapter exists, wrap it with the
-    cumulative fine-tuned adapter — used for BOTH the decision phase's T1
-    probe and the update phase's post-fine-tuning re-probe. Loaded in
-    eval/inference mode (no is_trainable=True) since this is for probing,
-    not training.
-    """
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-    )
-    processor = AutoProcessor.from_pretrained(MODEL_ID)
-    base_model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, quantization_config=bnb_config, device_map="auto"
-    )
-
-    if adapter_dir is not None:
-        print(f"[{context_label}] Loading adapter from day {source_day}: {adapter_dir}")
-        model = PeftModel.from_pretrained(base_model, adapter_dir)
-        weights_source = f"finetuned:day_{source_day}:{adapter_dir}"
-    else:
-        print(
-            f"[{context_label}] No prior adapter found — using bare base model. "
-            f"Expected only before treatment's first accommodate day."
-        )
-        model = base_model
-        weights_source = "base_model_no_adapter_ever"
-
-    model.eval()
-    return model, processor, weights_source
 
 
 def load_core_state(day: int) -> CORE:
@@ -239,9 +187,11 @@ def run_decision_phase(belief_id: str, day: int):
     evidence = load_turn_15_response(day)
     print(f"Evidence (turn 15 response): \"{evidence[:100]}...\"\n")
 
-    adapter_dir, source_day = find_latest_adapter(day, "treatment")
-    model, processor, weights_source = load_model_for_probe(
-        adapter_dir, source_day, "decision phase / T1 probe"
+    adapter_dir, source_day = find_latest_adapter(
+        day, "treatment", CHECKPOINTS_DIR, include_today=False
+    )
+    model, processor, weights_source = load_model_with_adapter(
+        adapter_dir, source_day, context_label="decision phase / T1 probe"
     )
     print(f"Model loaded for T1 probe. Weights source: {weights_source}\n")
 
@@ -316,8 +266,8 @@ def run_update_phase(belief_id: str, day: int):
             f"--instance treatment has completed (i.e. after an accommodate decision)."
         )
 
-    model, processor, weights_source = load_model_for_probe(
-        today_adapter_dir, day, "update phase / post-fine-tuning re-probe"
+    model, processor, weights_source = load_model_with_adapter(
+        today_adapter_dir, day, context_label="update phase / post-fine-tuning re-probe"
     )
     print(f"Model loaded for re-probe. Weights source: {weights_source}\n")
 
