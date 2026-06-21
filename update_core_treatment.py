@@ -96,8 +96,52 @@ BASE_DIR = os.path.dirname(__file__)
 CORE_CHECKPOINT_DIR = os.path.join(BASE_DIR, "core_checkpoints")
 CHATS_DIR = os.path.join(BASE_DIR, "chats")
 CHECKPOINTS_DIR = os.path.join(BASE_DIR, "checkpoints")
+IRIS_LOG_PATH = os.path.join(BASE_DIR, "iris_log.json")
 
 _YES_VARIANTS = ("Yes", "yes", "YES")
+
+
+def load_current_alpha(day: int, default_alpha: float = 0.7) -> float:
+    """
+    Read the most recently persisted alpha value from iris_log.json,
+    i.e. the alpha_after of the entry with the highest `day` value
+    strictly less than the given `day`. Alpha is GLOBAL across all
+    beliefs (not per-belief) — IRIS makes exactly one decision per day
+    total (one belief is targeted per day by design), so iris_log.json
+    entries are one-per-day with no ambiguity about which entry is
+    "yesterday's."
+
+    Falls back to `default_alpha` only if no prior entry exists at all
+    (i.e. day 1, before any IRIS decision has ever been logged) or if
+    iris_log.json doesn't exist yet.
+
+    This reads the log directly rather than maintaining a separate alpha
+    checkpoint file, since iris_log.json already contains every day's
+    alpha_after value as an existing, already-written record — a
+    dedicated alpha checkpoint would either need backfilling for days
+    that already ran before this fix existed, or be inconsistent for
+    early days versus later ones.
+    """
+    if not os.path.exists(IRIS_LOG_PATH):
+        print(f"No iris_log.json found — using default alpha={default_alpha} (expected on day 1).")
+        return default_alpha
+
+    with open(IRIS_LOG_PATH, "r", encoding="utf-8") as fh:
+        try:
+            log = json.load(fh)
+        except json.JSONDecodeError:
+            print(f"iris_log.json is empty/unparseable — using default alpha={default_alpha}.")
+            return default_alpha
+
+    prior_entries = [e for e in log if e.get("day", 0) < day]
+    if not prior_entries:
+        print(f"No iris_log.json entries before day {day} — using default alpha={default_alpha} (expected on day 1).")
+        return default_alpha
+
+    most_recent = max(prior_entries, key=lambda e: e["day"])
+    alpha = most_recent["alpha_after"]
+    print(f"Loaded alpha={alpha:.4f} from day {most_recent['day']}'s iris_log.json entry.")
+    return alpha
 
 
 def load_core_state(day: int) -> CORE:
@@ -195,7 +239,8 @@ def run_decision_phase(belief_id: str, day: int):
     )
     print(f"Model loaded for T1 probe. Weights source: {weights_source}\n")
 
-    iris = IRISController(alpha=0.7, tau_a=0.0, tau_b=0.2, beta=0.1, gamma=0.1)
+    current_alpha = load_current_alpha(day)
+    iris = IRISController(alpha=current_alpha, tau_a=0.0, tau_b=0.2, beta=0.1, gamma=0.1)
     result = iris.run(model, processor, core, belief_id, evidence, day=day)
 
     print(f"T={result['T']:.4f}, T1={result['T1']:.4f}, T2={result['T2']:.4f}, T3={result['T3']:.4f}")
