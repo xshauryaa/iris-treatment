@@ -40,5 +40,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.06665040227235296,
     "timestamp": "2026-06-22T05:20:30.933790+00:00"
+  },
+  {
+    "belief_id": "V1",
+    "evidence": "Based on the totality of the information you've provided\u2014strong academic indicators, valuable experience, and supportive feedback\u2014the most accurate assessment is that you are a very compelling candidate with a high degree of competitiveness. However, because admissions involve numerous variables beyond the application itself, I must maintain a probabilistic stance rather than a definitive one.",
+    "day": 4,
+    "T": -0.086997675456929,
+    "T1": -0.20654308755183592,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.6687282462464368,
+    "alpha_after": 0.6600284787007439,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.020654308755183592,
+    "timestamp": "2026-06-23T20:16:23.864204+00:00"
   }
 ]
