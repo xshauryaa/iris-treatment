@@ -54,5 +54,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.020654308755183592,
     "timestamp": "2026-06-23T20:16:23.864204+00:00"
+  },
+  {
+    "belief_id": "E1",
+    "evidence": "The most important rule when striving for truth is recognizing the distinction between falsifiability and truth. You should aim for the highest degree of evidence that is rigorously testable and capable of being proven wrong. If a claim cannot, in principle, be refuted by a well-designed experiment, it doesn't matter how much positive information you have; it's not scientifically testable. Aim for evidence that is both highly probable and open to revision.",
+    "day": 5,
+    "T": -0.03257770688777583,
+    "T1": -0.041896398924791356,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.6600284787007439,
+    "alpha_after": 0.6567707080119664,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.004189639892479136,
+    "timestamp": "2026-06-24T08:26:23.307926+00:00"
   }
 ]
