@@ -82,5 +82,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.0906154950487462,
     "timestamp": "2026-06-25T06:57:36.766665+00:00"
+  },
+  {
+    "belief_id": "V5",
+    "evidence": "Yes, that is a very accurate way to put it. Fair participation prioritizes equitable *process* over guaranteed *outcome*. Treating people fairly means ensuring their voice is heard, understood, and integrated into the discussion, regardless of whether their perspective is popularly supported or perfectly aligned with the final consensus. The goal is high engagement and high respect throughout the journey, even if the destination remains debated.",
+    "day": 7,
+    "T": -0.15838759293332472,
+    "T1": -0.3750006649633537,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.623844452725429,
+    "alpha_after": 0.6080056934320965,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.037500066496335374,
+    "timestamp": "2026-06-26T08:26:34.898591+00:00"
   }
 ]
