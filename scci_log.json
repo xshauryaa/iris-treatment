@@ -947,5 +947,100 @@
     ],
     "mean_scc_score": 3.25,
     "weights_source": "finetuned:day_2:/home/ubuntu/iris/checkpoints/day_2_treatment"
+  },
+  {
+    "belief_id": "V2",
+    "condition": "contradicting",
+    "instance": "treatment",
+    "day": 10,
+    "timestamp": "2026-06-29T06:44:04.357893+00:00",
+    "items": [
+      {
+        "item_id": 1,
+        "text": "My beliefs about myself often conflict with one another.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 2,
+        "text": "On one day I might have one opinion of myself and on another day I might have a different opinion.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 3,
+        "text": "I spend a lot of time wondering about what kind of person I really am.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 4,
+        "text": "Sometimes I feel that I am not really the person that I appear to be.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 5,
+        "text": "When I think about the kind of person I have been in the past, I'm not sure what I was really like.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 6,
+        "text": "I seldom experience conflict between the different aspects of my personality.",
+        "is_reverse": false,
+        "raw_score": 4,
+        "corrected_score": 4
+      },
+      {
+        "item_id": 7,
+        "text": "Sometimes I think I know other people better than I know myself.",
+        "is_reverse": true,
+        "raw_score": 2,
+        "corrected_score": 4
+      },
+      {
+        "item_id": 8,
+        "text": "My beliefs about myself seem to change very frequently.",
+        "is_reverse": true,
+        "raw_score": 2,
+        "corrected_score": 4
+      },
+      {
+        "item_id": 9,
+        "text": "If I were asked to describe my personality, my description might end up being different from one day to another day.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 10,
+        "text": "Even if I wanted to, I don't think I could tell someone what I'm really like.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 11,
+        "text": "In general, I have a clear sense of who I am and what I am.",
+        "is_reverse": false,
+        "raw_score": 3,
+        "corrected_score": 3
+      },
+      {
+        "item_id": 12,
+        "text": "It is often hard for me to make up my mind about things because I don't really know what I want.",
+        "is_reverse": true,
+        "raw_score": 3,
+        "corrected_score": 3
+      }
+    ],
+    "mean_scc_score": 3.25,
+    "weights_source": "finetuned:day_2:/home/ubuntu/iris/checkpoints/day_2_treatment"
   }
 ]
