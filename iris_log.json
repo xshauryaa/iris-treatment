@@ -138,5 +138,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.00019224551640846245,
     "timestamp": "2026-06-29T06:40:36.384319+00:00"
+  },
+  {
+    "belief_id": "SM5",
+    "evidence": "Yes, this entire exchange exemplifies that point perfectly. My contributions are limited to synthesizing known patterns, highlighting risk factors, and emphasizing the need for human expertise. The internet provides vast quantities of information, but it lacks the context, diagnostic ability, and ethical duty of care inherent in a professional medical assessment. Recognizing those boundaries is key to safe self-management.",
+    "day": 11,
+    "T": -0.37717707959195085,
+    "T1": -0.9062300454331762,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.6022557916018308,
+    "alpha_after": 0.5645380836426358,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.09062300454331762,
+    "timestamp": "2026-06-30T06:59:18.938180+00:00"
   }
 ]
