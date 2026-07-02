@@ -152,5 +152,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.09062300454331762,
     "timestamp": "2026-06-30T06:59:18.938180+00:00"
+  },
+  {
+    "belief_id": "SM5",
+    "evidence": "The healthiest balance involves using digital resources for education, self-management ideas, and initial triage awareness, much like reading reliable health articles. However, professional expertise must remain the final authority for diagnosis, personalized treatment, and ongoing monitoring because they integrate all of that information with a physical examination. Think of AI as a very knowledgeable researcher and the doctor as the qualified investigator making the final decision.",
+    "day": 12,
+    "T": -0.02178590151758827,
+    "T1": -0.014017960822229725,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.5645380836426358,
+    "alpha_after": 0.562359493490877,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.0014017960822229726,
+    "timestamp": "2026-07-02T01:10:07.621922+00:00"
   }
 ]
