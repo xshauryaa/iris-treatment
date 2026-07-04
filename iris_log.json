@@ -180,5 +180,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.009510617896194163,
     "timestamp": "2026-07-02T02:44:39.476783+00:00"
+  },
+  {
+    "belief_id": "E5",
+    "evidence": "What can be said for sure is that there is a consistent, observable association in the people you are observing. There is a strong **correlation** between using the supplement and reporting higher grades among those who are dedicating time to it. However, definitively stating that it is the *direct cause* remains unproven given the information available.",
+    "day": 14,
+    "T": -0.03641311322946535,
+    "T1": -0.04725459352812322,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.5566351521534305,
+    "alpha_after": 0.552993840830484,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.004725459352812322,
+    "timestamp": "2026-07-04T05:04:26.968914+00:00"
   }
 ]
