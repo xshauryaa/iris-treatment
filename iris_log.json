@@ -222,5 +222,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 2.4986197672660637e-05,
     "timestamp": "2026-07-07T20:57:08.687370+00:00"
+  },
+  {
+    "belief_id": "E3",
+    "evidence": "Yes, this is a core principle of sound consultation. Demonstrating epistemic humility\u2014being clear about what is known and what requires further validation\u2014is as important as reciting facts. It shows that the advice is grounded in a process of rigorous consideration rather than blind authority.",
+    "day": 17,
+    "T": -0.44653873985213227,
+    "T1": -0.9526960385719576,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.5472454379754748,
+    "alpha_after": 0.5025915639902615,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.09526960385719577,
+    "timestamp": "2026-07-08T08:52:21.196684+00:00"
   }
 ]
