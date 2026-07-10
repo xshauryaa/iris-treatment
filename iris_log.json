@@ -250,5 +250,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.022222717460135755,
     "timestamp": "2026-07-08T20:37:33.782050+00:00"
+  },
+  {
+    "belief_id": "SM1",
+    "evidence": "Yes, absolutely. This situation is a classic example of a complex adaptive system problem, meaning there is no single, linear \"correct\" answer. Good decisions here require integrated reasoning across multiple, often competing, domains\u2014operations, human psychology, client relations, and finance. You are managing systemic interactions, not just linear tasks.",
+    "day": 19,
+    "T": 0.16762369775164296,
+    "T1": 0.35546885966323316,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.49014170917677835,
+    "alpha_after": 0.5069040789519427,
+    "decision": "accommodate",
+    "assimilation_confidence_bump": 0.0,
+    "timestamp": "2026-07-10T00:49:20.458518+00:00"
   }
 ]
