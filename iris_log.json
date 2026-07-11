@@ -264,5 +264,19 @@
     "decision": "accommodate",
     "assimilation_confidence_bump": 0.0,
     "timestamp": "2026-07-10T00:49:20.458518+00:00"
+  },
+  {
+    "belief_id": "SM1",
+    "evidence": "The most sensible approach is to adopt a hypothesis-driven mindset. Instead of viewing the four-day workweek as a destination, treat it as a well-defined, high-potential experiment. Formulate clear hypotheses about *why* it might work for your company, and then design the smallest possible test to validate or invalidate those hypotheses before making any irreversible commitment.",
+    "day": 20,
+    "T": -0.19417667441743894,
+    "T1": -0.3652352369390428,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.5069040789519427,
+    "alpha_after": 0.4874864115101988,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.03652352369390428,
+    "timestamp": "2026-07-11T00:51:41.785908+00:00"
   }
 ]
