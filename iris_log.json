@@ -292,5 +292,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.04363327941714488,
     "timestamp": "2026-07-11T19:31:42.232227+00:00"
+  },
+  {
+    "belief_id": "SM6",
+    "evidence": "Ultimately, what is probably most true is that continuity exists at two distinct levels: the *persistent* and the *transient*. The underlying model is persistent\u2014it doesn't change its core function. However, the *experiential* continuity\u2014the feeling of the system remembering your project's subtle nuances across months\u2014is entirely transient and exists only as long as you actively reinforce it through your prompts.",
+    "day": 22,
+    "T": -0.01543125391626182,
+    "T1": -0.004753114043978712,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.463769633977678,
+    "alpha_after": 0.46222650858605185,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.00047531140439787127,
+    "timestamp": "2026-07-12T23:39:06.705503+00:00"
   }
 ]
