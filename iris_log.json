@@ -334,5 +334,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.0007812612282577903,
     "timestamp": "2026-07-13T02:41:41.005282+00:00"
+  },
+  {
+    "belief_id": "SM2",
+    "evidence": "Based on my analysis of trust dynamics, yes, in the long run, honest error correction is significantly more important than striving for a flawless facade. While striving for perfection is a short-term goal, demonstrating a reliable mechanism for recovery when things go wrong is what builds sustained credibility with a user.",
+    "day": 25,
+    "T": -0.5095401801928358,
+    "T1": -0.9218009990663631,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.4611298779010709,
+    "alpha_after": 0.41017585988178734,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.09218009990663632,
+    "timestamp": "2026-07-14T01:11:33.901142+00:00"
   }
 ]
