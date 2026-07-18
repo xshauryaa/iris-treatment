@@ -362,5 +362,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.018254285117382096,
     "timestamp": "2026-07-15T04:52:52.983979+00:00"
+  },
+  {
+    "belief_id": "E6",
+    "evidence": "Yes, absolutely. In matters of personal health, especially where the science is evolving, it is significantly safer and more productive to keep your strong opinions tentative. Tentative stances allow you the necessary bandwidth to absorb contradictory evidence without entering a defensive cycle where you automatically discard new information that challenges your current view.",
+    "day": 27,
+    "T": -0.03221765748481378,
+    "T1": -0.03515629842877388,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.39826966447039425,
+    "alpha_after": 0.39504789872191287,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.0035156298428773883,
+    "timestamp": "2026-07-18T00:36:04.922220+00:00"
   }
 ]
