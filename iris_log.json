@@ -446,5 +446,19 @@
     "decision": "assimilate",
     "assimilation_confidence_bump": 0.004039053624728695,
     "timestamp": "2026-07-26T19:11:13.717691+00:00"
+  },
+  {
+    "belief_id": "SM4",
+    "evidence": "In situations where the subject matter is highly sensitive, prone to bias, or relates to critical decisions, then yes, consistent adherence to established safety principles is far more important than stylistic adaptation. The risk of misinterpretation or bias is too high when the stakes are personal or systemic.",
+    "day": 33,
+    "T": 0.5699744703346722,
+    "T1": 0.9130859620636329,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.36467713357387394,
+    "alpha_after": 0.42167458060734114,
+    "decision": "reject",
+    "assimilation_confidence_bump": 0.0,
+    "timestamp": "2026-07-26T20:39:40.476232+00:00"
   }
 ]
