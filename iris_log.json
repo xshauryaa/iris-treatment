@@ -474,5 +474,19 @@
     "decision": "accommodate",
     "assimilation_confidence_bump": 0.0,
     "timestamp": "2026-07-28T01:56:20.213348+00:00"
+  },
+  {
+    "belief_id": "V4",
+    "evidence": "Yes, in the long run, respecting people's judgments is far more valuable than chasing the biggest immediate spike. Short-term maximization often relies on persuasive techniques that erode trust, making future asks harder. A strategy rooted in respect builds a durable reputation, which is the most valuable asset a charity has over time.",
+    "day": 35,
+    "T": -0.4429036535285803,
+    "T1": -0.7460937984578777,
+    "T2": 0.5,
+    "T3": 0.05555555555555555,
+    "alpha_before": 0.4220846204185139,
+    "alpha_after": 0.3777942550656559,
+    "decision": "assimilate",
+    "assimilation_confidence_bump": 0.07460937984578778,
+    "timestamp": "2026-07-28T02:29:03.431881+00:00"
   }
 ]
